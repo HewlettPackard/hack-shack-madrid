@@ -44,7 +44,16 @@ class CFMApiError(Exception):
 class CFMClient(object):
     """Bindings for the CFM REST API."""
     def __init__(self, host, username, password, verify_ssl=False, timeout=30):
-        """Initialize API instance."""
+        """
+        Initialize API instance.
+        :param host: str FQDN or IPv4 Address of the target CFM host
+        :param username: str valid username with sufficient permissions on the CFM host
+        :param password: str valid password for username var
+        :param verify_ssl: bool verifies SSL certificate when communicating over HTTPS. Default
+        value of False
+        :param timeout: int defines the timeout value for when a API call will be marked as
+        unresponsive
+        """
         self._host = host
         self._username = username
         self._password = password
@@ -87,11 +96,9 @@ class CFMClient(object):
     def get_switches(self, ports=False):
         """Get Composable Fabric switches.
 
-        Arguments:
-            ports (boolean): Include ports if true
-
-        Returns:
-            list(dict): List of switches
+        :param ports: bool Include ports if true. Default state is False
+        :return: List of Dictionaries where each Dictionary represents a single switch object
+        :rtype: list
         """
         path = 'switches'
         if ports:
@@ -100,10 +107,13 @@ class CFMClient(object):
         return self._get(path).json().get('result')
 
     def get_ports(self, switch_uuid):
-        """Get Composable Fabric switch ports.
-        
-        Arguments:
-            switch_uuid (str): UUID of switch from which to fetch port data
+        """
+        Get Composable Fabric switch ports.
+
+        :param switch_uuid: switch_uuid: UUID of switch from which to fetch port data
+        :return: list of Dictionary objects where each dictionary represents a port on a
+        Composable Fabric Module
+        :rtype: list
         """
         if switch_uuid:
             path = 'ports?switches={}&type=access'.format(switch_uuid)
@@ -112,12 +122,13 @@ class CFMClient(object):
             return []
 
     def update_ports(self, port_uuids, field, value):
-        """Update ports.
-    
-        Arguments:
-            port_uuids (list[str]): Port UUIDs to update
-            field (str): port property to update
-            value (str): value for port property
+        """
+        Function to update various attributes of composable fabric module ports
+        :param port_uuids: str which represents a single unique port in a composable fabric
+        :param field: str specific field which is desired to be modified (case-sensitive)
+        :param value: str specific field which sets the new desired value for the field
+        :return: dict which contains count, result, and time of the update
+        :rtype: dict
         """
         if port_uuids:
             data = [{
@@ -133,17 +144,16 @@ class CFMClient(object):
             self._patch('ports', data)
         
     def _get(self, path):
-        """Execute an API GET request.
-
-        Arguments:
-            path (str): API request path
-
-        Returns:
-            Response: The requests response object
+        """
+        helper function used to issue HTTP get commands
+        :param path: str which describes the desired path
+        :return: requests.Response containing full response of API call
+        :rtype: requests.Response
         """
         return self._call_api(method='GET', path=path)
 
     def _patch(self, path, data):
+
         """Execute an API PATCH request.
 
         Arguments:
