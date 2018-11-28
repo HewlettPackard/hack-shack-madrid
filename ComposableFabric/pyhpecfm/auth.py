@@ -1,35 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""
-Copyright 2018 Hewlett Packard Enterprise
-
-Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in
-compliance with the License. You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software distributed
-under the License is distributed on an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS
-OF ANY KIND, either express or implied. See the License for the specific language governing
-permissions and limitations under the License.
-"""
 
 import requests
 
 # the following removes the warnings for self-signed certificates
 # noinspection PyUnresolvedReferences
-from requests.packages.urllib3.exceptions import InsecureRequestWarning  # pylint: disable=import-error
+from requests.packages.urllib3.exceptions import \
+    InsecureRequestWarning  # pylint: disable=import-error
+
 # noinspection PyUnresolvedReferences
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # pylint: disable=no-member
-
-# Module level decorators
-
-def notimplementedyet(func):
-    def new_func(*args):
-        msg = func.__name__ + " is not implemented yet."
-        print(msg)
-        return msg
-    return new_func
 
 
 class CFMApiError(Exception):
@@ -59,7 +40,8 @@ class CFMClient(object):
         self._token = None
 
     def __del__(self):
-        """Disconnect from API on instance destruction."""
+        """Disconnect from API on instance destruction. Function
+        Explicitly expires token on CFM server instance"""
         self.disconnect()
 
     def connect(self):
@@ -89,57 +71,7 @@ class CFMClient(object):
         self._session = None
         self._token = None
 
-    def get_switches(self, ports=False):
-        """Get Composable Fabric switches.
-
-        :param ports: bool Include ports if true. Default state is False
-        :return: List of Dictionaries where each Dictionary represents a single switch object
-        :rtype: list
-        """
-        path = 'switches'
-        if ports:
-            path += '?ports=true'
-
-        return self._get(path).json().get('result')
-
-    def get_ports(self, switch_uuid):
-        """
-        Get Composable Fabric switch ports.
-
-        :param switch_uuid: switch_uuid: UUID of switch from which to fetch port data
-        :return: list of Dictionary objects where each dictionary represents a port on a
-        Composable Fabric Module
-        :rtype: list
-        """
-        if switch_uuid:
-            path = 'ports?switches={}&type=access'.format(switch_uuid)
-            return self._get(path).json().get('result')
-        else:
-            return []
-
-    def update_ports(self, port_uuids, field, value):
-        """
-        Function to update various attributes of composable fabric module ports
-        :param port_uuids: str which represents a single unique port in a composable fabric
-        :param field: str specific field which is desired to be modified (case-sensitive)
-        :param value: str specific field which sets the new desired value for the field
-        :return: dict which contains count, result, and time of the update
-        :rtype: dict
-        """
-        if port_uuids:
-            data = [{
-                'uuids': port_uuids,
-                'patch': [
-                    {
-                        'path': '/{}'.format(field),
-                        'value': value,
-                        'op': 'replace'
-                    }
-                ]
-            }]
-            self._patch('ports', data)
-        
-    def _get(self, path):
+    def get(self, path):
         """
         helper function used to issue HTTP get commands
         :param path: str which describes the desired path
@@ -148,8 +80,7 @@ class CFMClient(object):
         """
         return self._call_api(method='GET', path=path)
 
-    def _patch(self, path, data):
-
+    def patch(self, path, data):
         """Execute an API PATCH request.
 
         Arguments:
@@ -161,7 +92,7 @@ class CFMClient(object):
         """
         return self._call_api(method='PATCH', path=path, data=data)
 
-    def _post(self, path, data):
+    def post(self, path, data):
         """Execute an API POST request.
 
         Arguments:
@@ -185,14 +116,16 @@ class CFMClient(object):
             Response: The requests response object
         """
         url = 'https://{}/api/{}'.format(self._host, path)
-
+        if self._session is None:
+            self.connect()
         response = self._session.request(method=method,
-                                   url=url,
-                                   json=data,
-                                   verify=self._verify_ssl,
-                                   timeout=self._timeout)
+                                         url=url,
+                                         json=data,
+                                         verify=self._verify_ssl,
+                                         timeout=self._timeout)
         try:
             response.raise_for_status()
             return response
+        #TODO CHECK FOR TOKEN EXPIRATION
         except Exception as exception:
             raise exception
